@@ -1,47 +1,69 @@
+const {Op} = require('sequelize');
 const db = require('../util/db-connection');
+const Buses = require('../models/buses');
+const Bookings = require('../models/bookings');
+const Users = require('../models/users');
 
-const addbus = (req,res) => {
+const addbus = async (req,res) => {
     
-    const {busNumber,totalSeats,availableSeats} = req.body;
-    const insertQuery = `INSERT INTO buses(busNumber,totalSeats,availableSeats) VALUES(?,?,?)`
+    try{
+        const {busNumber,totalSeats,availableSeats} = req.body;
+        const bus = await Buses.create({
+            busNumber : busNumber,
+            totalSeats : totalSeats,
+            availableSeats : availableSeats
+        });
 
-    db.execute(insertQuery,[busNumber,totalSeats,availableSeats],(err,result)=>{
+        res.status(200).send('Bus has been added');
+    } catch(error){
+        console.log(error);
+        res.status(500).send('Unable to add bus.');
+    }
 
-        if(err){
-            console.log(err);
-            res.status(500).send(err.message);
-            db.end();
-            return;
-        }
-
-        res.status(200).send(`bus with the number ${busNumber} has been created`);
-    })
 };
 
-const getBus = (req,res) => {
+const getBus = async (req,res) => {
 
-    const {seats} = req.params;
-    const selectQuery = `SELECT * FROM buses WHERE availableSeats > ${seats}`;
+    try{
+        const {seats} = req.params;
+        const bus = await Buses.findAll({
+            where : {
+                availableSeats : {
+                    [Op.gt] : seats,
+                },
+            },
+        })
 
-    db.execute(selectQuery,(err,result)=>{
-
-        if(err){
-            console.log(err);
-            res.status(500).send(err.message);
-            db.end();
-            return;
+        if(bus.length === 0){
+           res.status(404).send(`No bus with available seats greater then ${seats}`)
         }
 
-        if(result.length === 0){
-            res.status(404).send(`No bus available with seats more then ${seats}`);
-            return;
-        }
+        res.json(bus);
 
-        res.json(result);
-    })
-} 
+    } catch(error){
+        console.log(error);
+        res.status(500).send('Unable to get bus.');
+    }
+}
+
+const getBusBookings = async (req,res) => {
+
+    try{
+        const {id} = req.params;
+        const booking = await Bookings.findAll({
+            where : {busId : id},
+            include : [{model:Users , attributes:['name','email']}]
+        })
+
+        res.status(200).json(booking);
+    } catch(err){
+        console.log(err);
+        res.status(500).json({message:'booking not fetched'});
+    }
+}
 
 module.exports = {
     addbus,
-    getBus
+    getBus,
+    getBusBookings
 }

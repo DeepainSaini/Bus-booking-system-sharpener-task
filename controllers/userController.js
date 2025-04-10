@@ -1,43 +1,54 @@
 const db = require('../util/db-connection');
+const Users = require('../models/users');
+const Bookings = require('../models/bookings');
+const Buses = require('../models/buses');
 
-const addUsers = (req,res,next) => {
-    const {name,email} = req.body;
-    const insertQuery = `INSERT INTO users(name,email) VALUES(?,?)`;
+const addUsers = async (req,res,next) => {
+    
+    try{
+        const {name,email} = req.body;
+        const user = await Users.create({
+            name : name,
+            email : email
+        });
 
-    db.execute(insertQuery,[name,email],(err)=>{
-
-        if(err){
-            console.log(err);
-            res.status(500).send(err.message);
-            db.end();
-        }
-
-        res.status(200).send('User has been adeed.')
-    })
+        res.status(200).send('User has been added');
+    } catch(error){
+        console.log(error);
+        res.status(500).send('Unable to add user.');
+    }
     
 };
 
-const getUsers = (req,res,next) => {
+const getUsers = async (req,res,next) => {
     
-    const selectQuery = `SELECT * FROM users`;
-
-    db.execute(selectQuery,(err,result)=>{
-        
-        if(err){
-            console.log(err);
-            res.status(500).send(err.message);
-            db.end();
-        }
-
-        res.json(result);
-
-        
-    })
+    try{
+        const user = await Users.findAll();
+        res.status(200).json(user);
+    } catch(error){
+        console.log(error);
+    }
     
+};
+
+const getUserBookings = async (req,res) => {
+     
+    try{
+        const {id} = req.params;
+        const booking = await Bookings.findAll({
+            where : {userId:id},
+            include : [{model:Buses , attributes : ['busNumber']}]
+        })
+        res.status(200).json(booking);
+    } catch(error){
+        console.log(error);
+        res.status(500).json({message:'unable to fetch'});
+    }
 };
 
 module.exports = {
 
     addUsers,
-    getUsers
+    getUsers,
+    getUserBookings
 }
